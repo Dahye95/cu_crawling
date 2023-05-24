@@ -1,39 +1,49 @@
+import json
+import re
+import requests
+import urllib.request
+from bs4 import BeautifulSoup
 from selenium import webdriver
 from webdriver_manager.chrome import ChromeDriverManager
 
-import time
+headers = {
+    "Referer": "https://cu.bgfretail.com/event/plus.do?category=event&depth2=1&sf=N",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36"
 
-options = webdriver.ChromeOptions()
-
-user_agent = 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Mobile Safari/537.36'
-
-options.add_argument('user_agent=' + user_agent)
-# options.add_argument('headless')
-
-url = 'https://cu.bgfretail.com/event/plus.do?category=event&depth2=1&sf=N'
-
-driver = webdriver.Chrome(ChromeDriverManager().install(), options=options)
+}
 
 
-driver.get(url)
+for i in range(1, 3):
+    params = {
+        "pageIndex": i,
+        "listType": 1,
+        "searchCondition": "",
+        "user_id": ""
+    }
 
-saleproduct = driver.find_elements_by_css_selector(
-    '#contents > div.relCon > div > ul')
-
-for i in saleproduct:
-    list = i.text
-    print(list)
-
-time.sleep(10)
-
-morebtn = driver.find_element_by_css_selector(
-    '#contents > div.relCon > div > div > div.prodListBtn-w > a').click()
-
-time.sleep(3)
-
-saleproduct2 = driver.find_element_by_css_selector(
-    '#contents > div.relCon > div > ul:nth-child(34)')
-
-for i in saleproduct2:
-    list2 = i.text
-    print(list2)
+    res = requests.post(
+        "https://cu.bgfretail.com/event/plusAjax.do", headers=headers, data=params)
+    soup = BeautifulSoup(res.text, "html.parser")
+    prod_badge = soup.find_all('div', "badge")
+    for b in prod_badge:
+        badges = b.find_all(["span"])
+        for badge in badges:
+            sale_badge = badge.text
+    prod_all = soup.find_all("div", {'class': 'prod_wrap'})
+    for i in prod_all:
+        prod_name = i.find_all(['p'])
+        prod_price = i.find_all(['strong'])
+        prod_img = i.find_all("img")
+        for name in prod_name:
+            sale_name = name.text
+        for price in prod_price:
+            sale_price = price.text+"원"
+        for img in prod_img:
+            img_src = "http" not in img['src']
+            if img_src:
+                sale_src = "https"+img['src']
+            else:
+                sale_src = img['src']
+        sale_product = {'name': sale_name, 'price': sale_price,
+                        'img': sale_src, 'plus': sale_badge}
+        print(sale_product)
